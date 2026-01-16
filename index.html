@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qsee – Text QC Tool (Demo Prototype)</title>
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <style>
+    :root{
+      --primary:#3f5fb5;
+      --bg:#eef1f7;
+      --panel:#ffffff;
+      --border:#d6dae5;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --good:#e6f4ea;
+      --warn:#fff4e5;
+      --bad:#fde8e8;
+    }
+
+    *{box-sizing:border-box;font-family:Segoe UI,Roboto,Arial,sans-serif}
+    body{margin:0;background:var(--bg);color:var(--text)}
+
+    /* Top bar */
+    .topbar{
+      height:56px;
+      background:var(--primary);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 16px;
+    }
+    .logo{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px}
+    .logo i{font-size:20px}
+    .toolbar i{margin-left:18px;cursor:pointer;opacity:.9}
+
+    /* Nav */
+    .nav{
+      background:#e6e9f2;
+      padding:8px 16px;
+      display:flex;
+      gap:24px;
+      font-size:14px;
+    }
+    .nav span{cursor:pointer;opacity:.6}
+    .nav span.active{opacity:1;font-weight:600}
+
+    /* Layout */
+    .main{display:flex;height:calc(100vh - 96px)}
+    .file-panel{
+      width:260px;
+      background:var(--panel);
+      border-right:1px solid var(--border);
+      padding:16px;
+      display:none;
+      flex-direction:column;
+      gap:14px;
+    }
+    .file-panel h4{margin:0 0 6px 0;font-size:13px;color:var(--muted)}
+    .file-item{cursor:pointer;display:flex;align-items:center;gap:10px;font-size:14px}
+
+    .content{flex:1;padding:24px;overflow:auto}
+
+    /* Upload */
+    .upload-box{
+      margin:auto;max-width:520px;height:260px;
+      background:#fff;border:2px dashed var(--border);
+      border-radius:10px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;cursor:pointer
+    }
+    .upload-box i{font-size:36px;color:var(--primary);margin-bottom:10px}
+
+    /* Sheet */
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid var(--border);padding:8px;font-size:14px}
+    th{background:#f3f5fb}
+    .bad{background:var(--bad)}
+    .warn{background:var(--warn)}
+
+    /* Home ribbon */
+    .ribbon{display:flex;gap:16px;margin-bottom:16px}
+    .ribbon .group{background:#fff;border:1px solid var(--border);padding:10px;border-radius:6px}
+    .group h5{margin:0 0 6px 0;font-size:13px}
+
+    /* Parameters */
+    .params{max-width:420px}
+    .param{background:#fff;border:1px solid var(--border);padding:12px;margin-bottom:10px;border-radius:6px}
+    .param label{font-weight:600}
+    .sub{margin-left:20px;margin-top:6px;font-size:13px}
+    .runqc{margin-top:16px;padding:10px;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;width:100%}
+
+    /* Popup */
+    .popup{
+      position:fixed;top:0;left:0;right:0;bottom:0;
+      background:rgba(0,0,0,.4);
+      display:none;align-items:center;justify-content:center
+    }
+    .popup .box{
+      background:#fff;padding:20px;border-radius:8px;width:420px
+    }
+
+    /* Analysis */
+    .analysis{display:flex;gap:16px}
+    .card{background:#fff;border:1px solid var(--border);padding:16px;border-radius:8px;min-width:160px}
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><i class="fa-solid fa-eye"></i> Qsee</div>
+  <div class="toolbar">
+    <i class="fa-solid fa-rotate-left"></i>
+    <i class="fa-solid fa-rotate-right"></i>
+    <i class="fa-solid fa-floppy-disk"></i>
+  </div>
+</div>
+
+<div class="nav">
+  <span class="active" onclick="showTab('file')"><i class="fa fa-folder"></i> File</span>
+  <span onclick="showTab('home')"><i class="fa fa-house"></i> Home</span>
+  <span onclick="showTab('params')"><i class="fa fa-sliders"></i> Parameters</span>
+  <span onclick="showTab('analysis')"><i class="fa fa-chart-column"></i> Analysis</span>
+</div>
+
+<div class="main">
+
+  <!-- File panel -->
+  <div class="file-panel" id="filePanel">
+    <h4>File</h4>
+    <div class="file-item" onclick="goUpload()"><i class="fa fa-arrow-left"></i> Back</div>
+    <div class="file-item"><i class="fa fa-file"></i> New</div>
+    <div class="file-item"><i class="fa fa-folder-open"></i> Open</div>
+    <div class="file-item"><i class="fa fa-save"></i> Save</div>
+    <div class="file-item"><i class="fa fa-copy"></i> Merge</div>
+    <div class="file-item"><i class="fa fa-download"></i> Export</div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+
+    <!-- Upload -->
+    <div id="upload" class="upload-box" onclick="openSheet()">
+      <i class="fa fa-plus"></i>
+      <div>Upload File (Demo)</div>
+    </div>
+
+    <!-- Sheet -->
+    <div id="sheet" style="display:none">
+
+      <!-- Home ribbon -->
+      <div id="home" class="ribbon">
+        <div class="group">
+          <h5>Language</h5>
+          <select><option>English</option><option>Korean</option><option>Hindi</option></select>
+        </div>
+        <div class="group"><h5>Completion</h5><button>Check</button></div>
+        <div class="group"><h5>Format</h5><button>Scan</button></div>
+      </div>
+
+      <!-- Parameters -->
+      <div id="params" class="params" style="display:none">
+        <div class="param">
+          <label><input type="checkbox" id="grammar"> Grammar & Spelling</label>
+          <div class="sub"><input type="checkbox"> Grammar<br><input type="checkbox"> Spelling</div>
+        </div>
+        <div class="param">
+          <label><input type="checkbox" id="dup"> Duplication</label>
+          <div class="sub">
+            <input type="checkbox"> Exact<br><input type="checkbox"> Near<br>
+            <input type="checkbox"> Cell-to-cell<br><input type="checkbox"> Row-to-row
+          </div>
+        </div>
+        <div class="param"><label><input type="checkbox"> Plagiarism</label></div>
+        <div class="param"><label><input type="checkbox"> AI Detection</label></div>
+        <button class="runqc" onclick="runQC()">Run QC</button>
+
+        <h4 style="margin-top:20px">Additional</h4>
+        <div class="param"><label><input type="checkbox" onclick="openPopup('Web Search')"> Web Search</label></div>
+        <div class="param"><label><input type="checkbox" onclick="openPopup('Dictionary')"> Dictionary</label></div>
+        <div class="param"><label><input type="checkbox"> Outliers (Coming soon)</label></div>
+      </div>
+
+      <!-- Table -->
+      <table>
+        <thead><tr><th>ID</th><th>Text</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="bad">This sentence are wrong spelled.</td><td>Grammar</td></tr>
+          <tr><td>2</td><td class="warn">This sentence are wrong spelled.</td><td>Duplicate</td></tr>
+          <tr><td>3</td><td>Near duplicate sentence here.</td><td>Partial</td></tr>
+          <tr><td>4</td><td>Near duplicate sentence here.</td><td>Partial</td></tr>
+          <tr><td>5</td><td class="bad">AI generated content example.</td><td>AI</td></tr>
+        </tbody>
+      </table>
+
+      <!-- Analysis -->
+      <div id="analysis" class="analysis" style="display:none">
+        <div class="card">Grammar: 2</div>
+        <div class="card">Duplicates: 2</div>
+        <div class="card">Plagiarism: 18%</div>
+        <div class="card">AI: 42%</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Popup -->
+<div class="popup" id="popup">
+  <div class="box">
+    <h3 id="popupTitle"></h3>
+    <p>Mock embedded lookup result.</p>
+    <button onclick="closePopup()">Close</button>
+  </div>
+</div>
+
+<script>
+  function showTab(tab){
+    document.getElementById('filePanel').style.display = tab==='file'?'flex':'none';
+    ['home','params','analysis'].forEach(t=>{
+      const el=document.getElementById(t);
+      if(el) el.style.display = (t===tab)?'block':'none';
+    });
+  }
+  function openSheet(){document.getElementById('upload').style.display='none';document.getElementById('sheet').style.display='block';}
+  function goUpload(){document.getElementById('sheet').style.display='none';document.getElementById('upload').style.display='flex';}
+  function runQC(){alert('QC run (mock)');showTab('analysis');}
+  function openPopup(title){document.getElementById('popupTitle').innerText=title;document.getElementById('popup').style.display='flex';}
+  function closePopup(){document.getElementById('popup').style.display='none';}
+</script>
+
+</body>
+</html>
